@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comp Plan Error Impact Calculator | Everstage</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#F7F8FA;color:#1A1D21}
+input[type=range]{width:100%;accent-color:#072A6C;cursor:pointer}
+input[type=number],input[type=email]{font-family:inherit}
+button{font-family:inherit;cursor:pointer}
+
+/* ── Hero ──────────────────────────────────────── */
+.hero{background:linear-gradient(135deg,#072A6C 0%,#1A5276 55%,#2BB5A0 100%);padding:28px 32px 32px;color:#fff}
+.hero-inner{max-width:1240px;margin:0 auto}
+.logo{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.logo-text{font-size:15px;font-weight:800;color:#fff;letter-spacing:.5px}
+.hero h1{font-size:28px;font-weight:900;margin:0 0 8px;line-height:1.2}
+.hero p{font-size:14px;opacity:.85;max-width:540px;line-height:1.6;margin:0}
+
+/* ── App Layout ─────────────────────────────────── */
+.app{max-width:1240px;margin:0 auto;padding:28px 32px 64px;display:grid;grid-template-columns:370px 1fr;gap:28px;align-items:start}
+
+/* ── Sidebar ─────────────────────────────────────── */
+.sidebar{position:sticky;top:24px;max-height:calc(100vh - 48px);overflow-y:auto;background:#fff;border:1px solid #E5E7EB;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+/* Hide scrollbar but keep scroll */
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-track{background:transparent}
+.sidebar::-webkit-scrollbar-thumb{background:#E5E7EB;border-radius:4px}
+
+/* Sidebar sections */
+.sb-section{padding:20px 20px 0}
+.sb-section:last-child{padding-bottom:20px}
+.sb-divider{height:1px;background:#F0F1F3;margin:0 20px}
+.sb-title{font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.9px;margin:0 0 14px;display:flex;align-items:center;gap:7px}
+.sb-title::after{content:'';flex:1;height:1px;background:#F0F1F3}
+
+/* Compact field styles */
+.f{margin-bottom:13px}
+.f:last-child{margin-bottom:0}
+.f label{display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:4px}
+.f-row{display:flex;align-items:center;border:1.5px solid #E5E7EB;border-radius:7px;overflow:hidden;background:#fff;transition:border-color .2s}
+.f-row:focus-within{border-color:#072A6C}
+.fa{padding:0 8px;font-size:11px;color:#9CA3AF;background:#F9FAFB;border-right:1px solid #E5E7EB;line-height:34px;white-space:nowrap}
+.fa.r{border-right:none;border-left:1px solid #E5E7EB}
+.f-row input[type=number]{border:none;outline:none;padding:0 10px;font-size:12px;font-weight:600;flex:1;height:34px;background:#fff;-moz-appearance:textfield;min-width:0}
+.f-row input[type=number]::-webkit-outer-spin-button,.f-row input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+
+/* Slider field */
+.sf{margin-bottom:13px}
+.sf:last-child{margin-bottom:0}
+.sf-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.sf-label{font-size:11px;font-weight:600;color:#374151}
+.sf-val{font-size:12px;font-weight:700;color:#072A6C;background:#EEF2F8;padding:1px 7px;border-radius:4px}
+input[type=range].compact{height:3px;margin:0}
+.sf-range{display:flex;justify-content:space-between;font-size:9px;color:#9CA3AF;margin-top:2px}
+
+/* Derived mini grid */
+.derived{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px;margin-bottom:4px}
+.dc{background:#F7F8FA;border-radius:7px;padding:8px 10px}
+.dc-lbl{font-size:9px;color:#9CA3AF;margin-bottom:1px;text-transform:uppercase;letter-spacing:.3px}
+.dc-val{font-size:13px;font-weight:700;color:#1A1D21}
+
+/* ICM buttons */
+.icm-btn{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border:1.5px solid #E5E7EB;background:#fff;cursor:pointer;text-align:left;width:100%;margin-bottom:7px;transition:all .15s}
+.icm-btn:last-child{margin-bottom:0}
+.icm-btn.sel{border-color:#072A6C;background:#EEF2F8}
+.icm-radio{width:14px;height:14px;border-radius:50%;border:2px solid #D1D5DB;background:#fff;flex-shrink:0;transition:border .15s}
+.icm-btn.sel .icm-radio{border:4px solid #072A6C}
+.icm-name{font-size:11px;font-weight:600;color:#1A1D21;line-height:1.3}
+.icm-desc{font-size:10px;color:#9CA3AF;margin-top:1px}
+
+/* ── Results Panel ──────────────────────────────── */
+.results{min-width:0}
+.panel-label{font-size:10px;font-weight:700;color:#072A6C;text-transform:uppercase;letter-spacing:.9px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.panel-label::after{content:'';flex:1;height:1px;background:#E5E7EB}
+
+/* Stat cards */
+.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.sc-lbl{font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.sc-val{font-size:26px;font-weight:800;line-height:1.1}
+.sc-sub{font-size:11px;color:#9CA3AF;margin-top:4px}
+
+/* Gate */
+.gate-wrap{position:relative}
+.blurred{filter:blur(5px) saturate(.4);pointer-events:none;user-select:none;opacity:.6}
+.gate-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(247,248,250,0) 0%,rgba(247,248,250,.65) 30%,rgba(247,248,250,.99) 100%);pointer-events:none}
+.gate-card-wrap{position:relative;z-index:10;max-width:500px;margin:0 auto;padding-top:24px}
+.gate-card{background:#fff;border:1px solid #E5E7EB;border-radius:16px;padding:32px 36px;box-shadow:0 8px 32px rgba(7,42,108,.11);text-align:center}
+.gate-icon{width:48px;height:48px;border-radius:11px;background:linear-gradient(135deg,#072A6C,#2BB5A0);margin:0 auto 14px;display:flex;align-items:center;justify-content:center}
+.gate-card h2{font-size:20px;font-weight:800;color:#1A1D21;margin:0 0 8px;line-height:1.25}
+.gate-card .gate-body{font-size:13px;color:#6B7280;margin:0 0 22px;line-height:1.6}
+.email-inp{width:100%;padding:11px 14px;font-size:13px;border:1.5px solid #E5E7EB;border-radius:8px;outline:none;margin-bottom:12px;transition:border-color .2s;font-family:inherit}
+.email-inp:focus{border-color:#072A6C}
+.email-inp.err{border-color:#E04355}
+.email-err{font-size:12px;color:#E04355;text-align:left;margin:-8px 0 10px;display:none}
+.submit-btn{width:100%;padding:12px;font-size:13px;font-weight:700;background:linear-gradient(135deg,#072A6C,#1A4A8A);color:#fff;border:none;border-radius:8px;cursor:pointer;letter-spacing:.3px;transition:opacity .2s}
+.submit-btn:disabled{opacity:.7;cursor:wait}
+.gate-note{font-size:11px;color:#9CA3AF;margin:10px 0 0}
+
+/* Preview breakdown */
+.card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.sec-title{font-size:10px;font-weight:700;color:#072A6C;text-transform:uppercase;letter-spacing:.8px;margin:0 0 14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* Breakdown rows */
+.br-row{margin-bottom:12px}
+.br-top{display:flex;justify-content:space-between;margin-bottom:4px;align-items:baseline}
+.br-name{font-size:12px;color:#1A1D21;font-weight:500}
+.br-right{display:flex;align-items:baseline;gap:5px}
+.br-amt{font-size:12px;font-weight:700}
+.br-pct{font-size:10px;color:#9CA3AF}
+.br-track{height:5px;background:#F0F1F3;border-radius:3px;overflow:hidden}
+.br-fill{height:5px;border-radius:3px;transition:width .5s ease}
+.br-total{border-top:2px solid #072A6C;margin-top:14px;padding-top:12px;display:flex;justify-content:space-between;align-items:baseline}
+.br-total-lbl{font-size:13px;font-weight:700;color:#1A1D21}
+.br-total-val{font-size:16px;font-weight:800;color:#E04355}
+
+/* Unlock banner */
+.unlock-banner{background:linear-gradient(135deg,#072A6C,#2BB5A0);border-radius:12px;padding:14px 20px;color:#fff;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.ub-left{display:flex;align-items:center;gap:10px}
+.ub-title{font-size:13px;font-weight:700}
+.ub-sub{font-size:11px;opacity:.85}
+.pdf-btn{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.45);border-radius:7px;padding:8px 16px;color:#fff;font-size:12px;font-weight:700;white-space:nowrap;transition:background .2s}
+.pdf-btn:hover{background:rgba(255,255,255,.3)}
+
+/* Methodology & Sources */
+.method-item{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #F0F1F3}
+.method-item:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.method-title{font-size:12px;font-weight:700;color:#072A6C;margin-bottom:4px}
+.method-formula{display:block;background:#F0F4F8;padding:5px 9px;border-radius:5px;font-size:10px;font-family:'SF Mono','Fira Code',monospace;margin-bottom:3px;color:#041C4A}
+.method-detail{font-size:10px;color:#9CA3AF}
+.src-item{margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #F0F1F3}
+.src-item:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.src-name{font-size:12px;font-weight:700;color:#1A1D21;margin-bottom:2px}
+.src-desc{font-size:11px;color:#6B7280;margin-bottom:3px}
+.src-url{font-size:10px;color:#2BB5A0;text-decoration:none}
+.cta-box{background:#EEF6F5;border-radius:8px;padding:14px;margin-top:12px}
+.cta-box-title{font-size:11px;font-weight:600;color:#2BB5A0;margin-bottom:3px}
+.cta-box-text{font-size:11px;color:#1A1D21;line-height:1.6;margin-bottom:9px}
+.cta-link{display:inline-block;background:linear-gradient(135deg,#072A6C,#1A4A8A);color:#fff;padding:8px 16px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none}
+.footer-note{font-size:10px;color:#9CA3AF;line-height:1.6;margin-top:36px;padding-top:20px;border-top:1px solid #E5E7EB}
+
+/* ══ PRINT ══════════════════════════════════════ */
+.print-only{display:none}
+@media print{
+  .screen-only{display:none!important}
+  .print-only{display:block!important}
+  body{background:#fff;margin:0}
+  @page{margin:.55in .5in;size:letter}
+  .pr{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1A1D21;font-size:11px}
+  .pr-hdr{background:#072A6C;color:#fff;padding:18px 22px 14px;margin:-.55in -.5in 0;display:flex;justify-content:space-between;align-items:flex-start}
+  .pr-hdr-title{font-size:21px;font-weight:900;margin:0 0 2px}
+  .pr-hdr-sub{font-size:10px;opacity:.75;margin:0 0 5px}
+  .pr-hdr-brand{font-size:11px;font-weight:700;color:#2BB5A0;letter-spacing:1px}
+  .pr-hdr-total{font-size:34px;font-weight:900;text-align:right;line-height:1}
+  .pr-hdr-total-label{font-size:9px;opacity:.7;text-align:right;margin-top:3px}
+  .pr-kpis{display:flex;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;margin:14px 0 10px}
+  .pr-kpi{flex:1;padding:8px 12px;border-right:1px solid #E5E7EB}
+  .pr-kpi:last-child{border-right:none}
+  .pr-kpi-lbl{font-size:8px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+  .pr-kpi-val{font-size:16px;font-weight:800}
+  .pr-kpi-sub{font-size:9px;color:#6B7280;margin-top:1px}
+  .pr-body{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+  .pr-sec{font-size:9px;font-weight:700;color:#072A6C;text-transform:uppercase;letter-spacing:.8px;border-bottom:2px solid #072A6C;padding-bottom:3px;margin:0 0 7px}
+  .pr-tbl{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:10px}
+  .pr-tbl td{padding:2.5px 0}
+  .pr-tbl td:last-child{text-align:right;font-weight:700}
+  .pr-crow{margin-bottom:7px}
+  .pr-ctop{display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px}
+  .pr-clbl{font-weight:500}
+  .pr-camt{font-weight:700}
+  .pr-cbg{height:4px;background:#E5E7EB;border-radius:2px}
+  .pr-cfg{height:4px;border-radius:2px}
+  .pr-cpct{font-size:8px;color:#6B7280;text-align:right}
+  .pr-total-row{display:flex;justify-content:space-between;border-top:2px solid #072A6C;padding-top:7px;margin-top:3px;font-size:12px;font-weight:800}
+  .pr-total-amt{color:#E04355}
+  .pr-mitem{margin-bottom:5px;font-size:9px}
+  .pr-mtitle{font-weight:700;color:#072A6C}
+  .pr-mfml{font-family:'Courier New',monospace;background:#F0F4F8;padding:1px 5px;border-radius:3px;font-size:8px;display:inline-block}
+  .pr-src{font-size:8.5px;color:#6B7280;margin-bottom:2.5px}
+  .pr-src strong{color:#1A1D21}
+  .pr-footer{font-size:8px;color:#6B7280;margin-top:14px;border-top:1px solid #E5E7EB;padding-top:7px;display:flex;justify-content:space-between}
+  .pr-di{display:flex;align-items:center;gap:5px;font-size:9px;margin-bottom:4px}
+  .pr-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════ SCREEN APP ═══════════════════════════════════════════ -->
+<div class="screen-only">
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="logo">
+      <svg width="26" height="26" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="6" fill="rgba(255,255,255,0.2)"/><path d="M8 16L14 22L24 10" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="logo-text">EVERSTAGE</span>
+    </div>
+    <h1>Comp Plan Error Impact Calculator</h1>
+    <p>See exactly how much commission errors, admin overhead, and plan misalignment are costing your sales org — and get a personalized PDF report.</p>
+  </div>
+</div>
+
+<!-- App layout: sidebar + results -->
+<div class="app">
+
+  <!-- ═══ SIDEBAR ════════════════════════════════════════════════ -->
+  <aside class="sidebar">
+
+    <!-- Your Organization -->
+    <div class="sb-section">
+      <div class="sb-title">Your Organization</div>
+
+      <div class="f">
+        <label>Sales team size</label>
+        <div class="f-row"><input type="number" id="f-teamSize" value="40" min="1"><span class="fa r">reps</span></div>
+      </div>
+
+      <div class="sf">
+        <div class="sf-top"><span class="sf-label">Average OTE</span><span class="sf-val" id="d-avgOTE">$120,000</span></div>
+        <input type="range" class="compact" id="f-avgOTE" min="50000" max="500000" step="5000" value="120000">
+        <div class="sf-range"><span>$50K</span><span>$500K</span></div>
+      </div>
+
+      <div class="sf">
+        <div class="sf-top"><span class="sf-label">Base / Variable Split</span><span class="sf-val" id="d-basePct">50 / 50</span></div>
+        <input type="range" class="compact" id="f-basePct" min="30" max="70" step="5" value="50">
+        <div class="sf-range"><span>30/70</span><span>70/30</span></div>
+      </div>
+
+      <div class="f">
+        <label>Annual revenue</label>
+        <div class="f-row"><span class="fa">$</span><input type="number" id="f-revenue" value="25000000" min="0" step="1000000"></div>
+      </div>
+
+      <div class="derived">
+        <div class="dc"><div class="dc-lbl">Variable / rep</div><div class="dc-val" id="d-varPay">$60K</div></div>
+        <div class="dc"><div class="dc-lbl">Total var. budget</div><div class="dc-val" id="d-totalVar">$2.4M</div></div>
+        <div class="dc"><div class="dc-lbl">Revenue / rep</div><div class="dc-val" id="d-revRep">$625K</div></div>
+        <div class="dc"><div class="dc-lbl">Comp-to-rev ratio</div><div class="dc-val" id="d-compRatio">19.2%</div></div>
+      </div>
+    </div>
+
+    <div class="sb-divider"></div>
+
+    <!-- ICM Tool -->
+    <div class="sb-section">
+      <div class="sb-title">Current ICM Tool</div>
+      <button class="icm-btn sel" data-key="spreadsheet"><div class="icm-radio"></div><div><div class="icm-name">Spreadsheets</div><div class="icm-desc">Manual, formula-heavy, high error risk</div></div></button>
+      <button class="icm-btn" data-key="homegrown"><div class="icm-radio"></div><div><div class="icm-name">Homegrown / Legacy</div><div class="icm-desc">Custom-built, partially automated</div></div></button>
+      <button class="icm-btn" data-key="basic"><div class="icm-radio"></div><div><div class="icm-name">Basic ICM Platform</div><div class="icm-desc">Entry-level automation</div></div></button>
+      <button class="icm-btn" data-key="modern"><div class="icm-radio"></div><div><div class="icm-name">Modern ICM (e.g. Everstage)</div><div class="icm-desc">Full automation, &lt;2% error rate</div></div></button>
+    </div>
+
+    <div class="sb-divider"></div>
+
+    <!-- Assumptions: Error & Admin -->
+    <div class="sb-section">
+      <div class="sb-title">Error &amp; Admin</div>
+
+      <div class="sf">
+        <div class="sf-top"><span class="sf-label">Commission error rate</span><span class="sf-val" id="d-errorRate">8.0%</span></div>
+        <input type="range" class="compact" id="f-errorRate" min="0.5" max="10" step="0.5" value="8">
+        <div class="sf-range"><span>0.5%</span><span>10%</span></div>
+      </div>
+
+      <div class="f">
+        <label>Admin hours / month</label>
+        <div class="f-row"><input type="number" id="f-adminHours" value="120" min="0"><span class="fa r">hrs</span></div>
+      </div>
+
+      <div class="f">
+        <label>Admin hourly rate</label>
+        <div class="f-row"><span class="fa">$</span><input type="number" id="f-adminRate" value="50" min="0"><span class="fa r">/hr</span></div>
+      </div>
+    </div>
+
+    <div class="sb-divider"></div>
+
+    <!-- Assumptions: Attrition -->
+    <div class="sb-section">
+      <div class="sb-title">Attrition &amp; Ramp</div>
+
+      <div class="sf">
+        <div class="sf-top"><span class="sf-label">Annual turnover rate</span><span class="sf-val" id="d-turnover">35.0%</span></div>
+        <input type="range" class="compact" id="f-turnover" min="10" max="50" step="1" value="35">
+        <div class="sf-range"><span>10%</span><span>50%</span></div>
+      </div>
+
+      <div class="sf">
+        <div class="sf-top"><span class="sf-label">% driven by comp issues</span><span class="sf-val" id="d-compDriven">31.0%</span></div>
+        <input type="range" class="compact" id="f-compDriven" min="10" max="50" step="1" value="31">
+        <div class="sf-range"><span>10%</span><span>50%</span></div>
+      </div>
+
+      <div class="sf">
+        <div class="sf-top"><span class="sf-label">Replacement cost multiplier</span><span class="sf-val" id="d-replMult">1.5x base</span></div>
+        <input type="range" class="compact" id="f-replMult" min="10" max="30" step="1" value="15">
+        <div class="sf-range"><span>1.0x</span><span>3.0x</span></div>
+      </div>
+
+      <div class="sf">
+        <div class="sf-top"><span class="sf-label">New hire ramp time</span><span class="sf-val" id="d-ramp">5 months</span></div>
+        <input type="range" class="compact" id="f-ramp" min="2" max="12" step="1" value="5">
+        <div class="sf-range"><span>2 mo</span><span>12 mo</span></div>
+      </div>
+    </div>
+
+    <div class="sb-divider"></div>
+
+    <!-- Assumptions: Revenue & Legal -->
+    <div class="sb-section">
+      <div class="sb-title">Revenue &amp; Legal</div>
+
+      <div class="sf">
+        <div class="sf-top"><span class="sf-label">Gaming / sandbagging loss</span><span class="sf-val" id="d-gaming">5.0%</span></div>
+        <input type="range" class="compact" id="f-gaming" min="1" max="10" step="0.5" value="5">
+        <div class="sf-range"><span>1%</span><span>10%</span></div>
+      </div>
+
+      <div class="sf">
+        <div class="sf-top"><span class="sf-label">Probability of legal issues</span><span class="sf-val" id="d-legal">25.0%</span></div>
+        <input type="range" class="compact" id="f-legal" min="5" max="40" step="1" value="25">
+        <div class="sf-range"><span>5%</span><span>40%</span></div>
+      </div>
+
+      <div class="f">
+        <label>Avg legal cost if issue arises</label>
+        <div class="f-row"><span class="fa">$</span><input type="number" id="f-legalCost" value="150000" min="0" step="10000"></div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ═══ RESULTS PANEL ══════════════════════════════════════════ -->
+  <main class="results">
+
+    <!-- Headline Stats -->
+    <div class="panel-label">Estimated annual cost</div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="sc-lbl">Total Annual Impact</div><div class="sc-val" id="s-total" style="color:#E04355">$2.4M</div><div class="sc-sub" id="s-total-sub">9.7% of revenue</div></div>
+      <div class="stat-card"><div class="sc-lbl">Comp-Driven Departures</div><div class="sc-val" id="s-dep" style="color:#072A6C">4 reps/yr</div><div class="sc-sub" id="s-dep-sub">14 total turnover</div></div>
+      <div class="stat-card"><div class="sc-lbl">Cost Per Departure</div><div class="sc-val" id="s-cpd" style="color:#2BB5A0">$90K</div><div class="sc-sub" id="s-cpd-sub">1.5x base salary</div></div>
+    </div>
+
+    <!-- Gate section -->
+    <div id="gate-section">
+      <div class="panel-label">Unlock your full report</div>
+      <div class="gate-wrap">
+        <!-- Blurred preview -->
+        <div class="blurred">
+          <div class="grid2" style="margin-bottom:16px">
+            <div class="card"><div class="sec-title">Estimated Annual Costs</div><div id="prev-breakdown"></div></div>
+            <div class="card"><div class="sec-title">Cost Distribution</div><div id="prev-donut" style="display:flex;justify-content:center;padding:10px 0"></div><div id="prev-legend" style="margin-top:6px"></div></div>
+          </div>
+        </div>
+        <div class="gate-overlay"></div>
+        <div class="gate-card-wrap">
+          <div class="gate-card">
+            <div class="gate-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="2" stroke="#fff" stroke-width="2"/><path d="M3 7l9 7 9-7" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg></div>
+            <h2>Your report is ready</h2>
+            <p class="gate-body">Enter your work email to unlock the full cost breakdown, distribution chart, methodology, and a downloadable PDF.</p>
+            <form id="email-form">
+              <input type="email" class="email-inp" id="email-inp" placeholder="your.name@company.com">
+              <div class="email-err" id="email-err"></div>
+              <button type="submit" class="submit-btn" id="submit-btn">Unlock My Full Report &rarr;</button>
+            </form>
+            <p class="gate-note">No spam. Everstage may follow up to discuss your results.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unlocked report -->
+    <div id="report-section" style="display:none">
+      <div class="unlock-banner">
+        <div class="ub-left">
+          <svg width="20" height="20" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="11" fill="rgba(255,255,255,0.2)"/><path d="M6 11l3.5 3.5L16 7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div><div class="ub-title">Full report unlocked</div><div class="ub-sub">Adjust any input to see results update live</div></div>
+        </div>
+        <button class="pdf-btn" onclick="window.print()">
+          <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><path d="M3 5V1h9v4M1 5h13v6H1V5zM3 11v3h9v-3" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          Download PDF Report
+        </button>
+      </div>
+
+      <div class="panel-label">Full cost breakdown</div>
+      <div class="grid2" style="margin-bottom:16px">
+        <div class="card"><div class="sec-title">Estimated Annual Costs</div><div id="rep-breakdown"></div><div class="br-total"><span class="br-total-lbl">Total Annual Impact</span><span class="br-total-val" id="rep-total">$2,432,333</span></div></div>
+        <div class="card"><div class="sec-title">Cost Distribution</div><div id="rep-donut" style="display:flex;justify-content:center;padding:10px 0"></div><div id="rep-legend" style="margin-top:6px"></div></div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="sec-title">Calculation Methodology</div>
+          <div class="method-item"><div class="method-title">1. Calculation Errors</div><code class="method-formula">Total Variable Budget &times; Error Rate</code><div class="method-detail">Total Variable Budget = (OTE &times; (1 &minus; Base%)) &times; Team Size</div></div>
+          <div class="method-item"><div class="method-title">2. Admin Overhead</div><code class="method-formula">Admin Hours/Month &times; Rate &times; 12</code><div class="method-detail">Covers manual reviews, dispute resolution, shadow accounting</div></div>
+          <div class="method-item"><div class="method-title">3. Turnover Replacement</div><code class="method-formula">Comp-Driven Departures &times; (Base Salary &times; Multiplier)</code><div class="method-detail">Comp Departures = Team Size &times; Turnover Rate &times; Comp-Driven %</div></div>
+          <div class="method-item"><div class="method-title">4. Ramp Productivity Loss</div><code class="method-formula">Departures &times; Monthly Rev/Rep &times; Ramp Months &times; 50%</code><div class="method-detail">New hires at ~50% capacity during ramp period</div></div>
+          <div class="method-item"><div class="method-title">5. Revenue Leakage (Gaming)</div><code class="method-formula">Annual Revenue &times; Gaming Loss %</code><div class="method-detail">Sandbagging, deal-deferral, and cherry-picking behaviors</div></div>
+          <div class="method-item"><div class="method-title">6. Legal &amp; Dispute Risk</div><code class="method-formula">Probability of Issue &times; Average Legal Cost</code><div class="method-detail">Probability-weighted annual cost</div></div>
+        </div>
+        <div class="card">
+          <div class="sec-title">Sources &amp; References</div>
+          <div class="src-item"><div class="src-name">Gartner</div><div class="src-desc">Commission error rates (3-8% manual, &lt;2% modern ICM)</div><a class="src-url" href="https://gartner.com/en/sales/topics/sales-compensation" target="_blank">gartner.com/en/sales/topics/sales-compensation</a></div>
+          <div class="src-item"><div class="src-name">Harvard Business Review</div><div class="src-desc">Sandbagging &amp; gaming behavior (4-6% revenue loss)</div><a class="src-url" href="https://hbr.org/topic/subject/sales-compensation" target="_blank">hbr.org/topic/subject/sales-compensation</a></div>
+          <div class="src-item"><div class="src-name">Salesforce State of Sales</div><div class="src-desc">Turnover &amp; attrition benchmarks across sales orgs</div><a class="src-url" href="https://salesforce.com/resources/research-reports/state-of-sales" target="_blank">salesforce.com/resources/research-reports/state-of-sales</a></div>
+          <div class="src-item"><div class="src-name">Alexander Group</div><div class="src-desc">Sales compensation design &amp; admin cost benchmarks</div><a class="src-url" href="https://alexandergroup.com/insights/sales-compensation" target="_blank">alexandergroup.com/insights/sales-compensation</a></div>
+          <div class="src-item"><div class="src-name">Incentive Research Foundation</div><div class="src-desc">Comp plan design &amp; effectiveness research</div><a class="src-url" href="https://theirf.org/research" target="_blank">theirf.org/research</a></div>
+          <div class="cta-box"><div class="cta-box-title">Want to reduce these costs?</div><div class="cta-box-text">Everstage customers typically reduce comp errors by 85%+ and cut admin time in half within 90 days.</div><a class="cta-link" href="https://www.everstage.com/demo" target="_blank">See Everstage in action &rarr;</a></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-note">Benchmarks sourced from Gartner, HBR, Salesforce, Xactly, Alexander Group, and Incentive Research Foundation. All figures are estimates — adjust the inputs on the left to reflect your organization.</div>
+  </main>
+
+</div><!-- /app -->
+</div><!-- /screen-only -->
+
+
+<!-- ═══════ PRINT REPORT ══════════════════════════════════════════ -->
+<div class="print-only pr" id="print-report">
+  <div class="pr-hdr">
+    <div><div class="pr-hdr-title">Comp Plan Error Impact Report</div><div class="pr-hdr-sub">Personalized cost analysis based on your organization's inputs</div><div class="pr-hdr-brand">EVERSTAGE</div></div>
+    <div><div class="pr-hdr-total" id="pr-total">$2.4M</div><div class="pr-hdr-total-label" id="pr-total-sub">TOTAL ANNUAL IMPACT</div></div>
+  </div>
+  <div class="pr-kpis">
+    <div class="pr-kpi"><div class="pr-kpi-lbl">Comp-Driven Departures</div><div class="pr-kpi-val" id="pr-dep" style="color:#072A6C">4 reps/yr</div><div class="pr-kpi-sub" id="pr-dep-sub">14 total turnover</div></div>
+    <div class="pr-kpi"><div class="pr-kpi-lbl">Cost Per Departure</div><div class="pr-kpi-val" id="pr-cpd" style="color:#E04355">$90K</div><div class="pr-kpi-sub" id="pr-cpd-sub">1.5x base salary</div></div>
+    <div class="pr-kpi"><div class="pr-kpi-lbl">Current Tool</div><div class="pr-kpi-val" id="pr-tool" style="color:#E04355;font-size:12px;padding-top:3px">Spreadsheets</div><div class="pr-kpi-sub" id="pr-err-rate">Error rate: 8.0%</div></div>
+  </div>
+  <div class="pr-body">
+    <div>
+      <div class="pr-sec">Your Inputs</div><table class="pr-tbl" id="pr-inp-tbl"></table>
+      <div class="pr-sec">Assumptions</div><table class="pr-tbl" id="pr-assm-tbl"></table>
+      <div class="pr-sec">Calculation Methodology</div>
+      <div class="pr-mitem"><span class="pr-mtitle">&#9679; Calculation Errors: </span><span class="pr-mfml">Variable Budget &times; Error Rate</span></div>
+      <div class="pr-mitem"><span class="pr-mtitle">&#9679; Admin Overhead: </span><span class="pr-mfml">Admin Hrs &times; Rate &times; 12</span></div>
+      <div class="pr-mitem"><span class="pr-mtitle">&#9679; Turnover Replacement: </span><span class="pr-mfml">Comp Departures &times; (Base &times; Multiplier)</span></div>
+      <div class="pr-mitem"><span class="pr-mtitle">&#9679; Ramp Productivity Loss: </span><span class="pr-mfml">Departures &times; Rev/Rep/Mo &times; Ramp &times; 50%</span></div>
+      <div class="pr-mitem"><span class="pr-mtitle">&#9679; Revenue Leakage: </span><span class="pr-mfml">Annual Revenue &times; Gaming Loss %</span></div>
+      <div class="pr-mitem"><span class="pr-mtitle">&#9679; Legal &amp; Dispute Risk: </span><span class="pr-mfml">Legal Probability &times; Avg Legal Cost</span></div>
+      <div style="margin-top:10px">
+        <div class="pr-sec">Sources &amp; References</div>
+        <div class="pr-src"><strong>Gartner</strong> &mdash; Commission error rates (3-8% manual, &lt;2% modern ICM)<br><span style="color:#2BB5A0">gartner.com/en/sales/topics/sales-compensation</span></div>
+        <div class="pr-src"><strong>Harvard Business Review</strong> &mdash; Sandbagging &amp; gaming behavior (4-6%)<br><span style="color:#2BB5A0">hbr.org/topic/subject/sales-compensation</span></div>
+        <div class="pr-src"><strong>Salesforce State of Sales</strong> &mdash; Turnover &amp; attrition benchmarks<br><span style="color:#2BB5A0">salesforce.com/resources/research-reports/state-of-sales</span></div>
+        <div class="pr-src"><strong>Alexander Group</strong> &mdash; Sales compensation design &amp; admin costs<br><span style="color:#2BB5A0">alexandergroup.com/insights/sales-compensation</span></div>
+        <div class="pr-src"><strong>Incentive Research Foundation</strong> &mdash; Comp plan design research<br><span style="color:#2BB5A0">theirf.org/research</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="pr-sec">Estimated Annual Costs</div><div id="pr-cost-rows"></div>
+      <div class="pr-total-row"><span>Total Annual Impact</span><span class="pr-total-amt" id="pr-total-full">$2,432,333</span></div>
+      <div style="margin-top:14px">
+        <div class="pr-sec">Cost Distribution</div>
+        <div style="display:flex;justify-content:center;margin:10px 0 8px"><svg id="pr-donut" width="160" height="160"></svg></div>
+        <div id="pr-legend"></div>
+      </div>
+    </div>
+  </div>
+  <div class="pr-footer"><span>Generated by the Everstage Comp Plan Error Impact Calculator.</span><span>everstage.com</span></div>
+</div>
+
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────
+const HS_PORTAL    = "YOUR_HUBSPOT_PORTAL_ID";
+const HS_FORM      = "YOUR_HUBSPOT_FORM_GUID";
+const N8N_WEBHOOK  = "YOUR_N8N_WEBHOOK_URL"; // e.g. https://your-n8n.com/webhook/comp-calculator-lead
+
+// ── ICM PRESETS ───────────────────────────────────────────────────
+const ICM = {
+  spreadsheet: { label:"Spreadsheets",    errorRate:8,   adminHours:120, adminRate:50, legalRisk:25, compDriven:31 },
+  homegrown:   { label:"Homegrown/Legacy",errorRate:5,   adminHours:70,  adminRate:50, legalRisk:20, compDriven:28 },
+  basic:       { label:"Basic ICM",       errorRate:2.5, adminHours:40,  adminRate:50, legalRisk:15, compDriven:22 },
+  modern:      { label:"Modern ICM",      errorRate:1.5, adminHours:25,  adminRate:50, legalRisk:10, compDriven:15 },
+};
+const CAT_COLOR = {
+  'Calculation Errors':'#E04355','Admin Overhead':'#E04355',
+  'Turnover Replacement':'#072A6C','Ramp Productivity Loss':'#072A6C',
+  'Revenue Leakage (Gaming)':'#2BB5A0','Legal & Dispute Risk':'#2BB5A0'
+};
+
+// ── HELPERS ───────────────────────────────────────────────────────
+const fmt = n => n>=1e6?'$'+(n/1e6).toFixed(1)+'M':n>=1e3?'$'+Math.round(n/1e3)+'K':'$'+Math.round(n);
+const fmtFull = n => '$'+Math.round(n).toLocaleString('en-US');
+const f = n => n.toFixed(1);
+const g = id => document.getElementById(id);
+const setText = (id,v) => { const e=g(id); if(e) e.textContent=v; };
+const setHTML = (id,v) => { const e=g(id); if(e) e.innerHTML=v; };
+const getNum  = id => parseFloat(g(id)?.value)||0;
+
+// ── CALCULATE ─────────────────────────────────────────────────────
+function calc() {
+  const teamSize = getNum('f-teamSize');
+  const avgOTE   = getNum('f-avgOTE');
+  const basePct  = getNum('f-basePct')/100;
+  const revenue  = getNum('f-revenue');
+  const errRate  = getNum('f-errorRate')/100;
+  const adminH   = getNum('f-adminHours');
+  const adminR   = getNum('f-adminRate');
+  const turnover = getNum('f-turnover')/100;
+  const compDriv = getNum('f-compDriven')/100;
+  const replMult = getNum('f-replMult')/10;
+  const ramp     = getNum('f-ramp');
+  const gaming   = getNum('f-gaming')/100;
+  const legal    = getNum('f-legal')/100;
+  const legalCost= getNum('f-legalCost');
+
+  const varPay    = avgOTE*(1-basePct);
+  const totalVar  = varPay*teamSize;
+  const base      = avgOTE*basePct;
+  const calcErrs  = totalVar*errRate;
+  const adminOH   = adminH*adminR*12;
+  const totalTurn = Math.round(teamSize*turnover);
+  const compTurn  = Math.round(totalTurn*compDriv);
+  const replCost  = base*replMult;
+  const turnCost  = compTurn*replCost;
+  const mthRev    = revenue/teamSize/12;
+  const rampLoss  = compTurn*mthRev*ramp*0.5;
+  const gamingL   = revenue*gaming;
+  const legalR    = legal*legalCost;
+  const total     = calcErrs+adminOH+turnCost+rampLoss+gamingL+legalR;
+  const revPct    = revenue>0?total/revenue*100:0;
+
+  const breakdown = [
+    {name:'Revenue Leakage (Gaming)',value:gamingL},
+    {name:'Ramp Productivity Loss',  value:rampLoss},
+    {name:'Turnover Replacement',    value:turnCost},
+    {name:'Calculation Errors',      value:calcErrs},
+    {name:'Admin Overhead',          value:adminOH},
+    {name:'Legal & Dispute Risk',    value:legalR},
+  ].sort((a,b)=>b.value-a.value);
+
+  const pie = [
+    {name:'Direct Costs',    value:calcErrs+adminOH,  color:'#E04355'},
+    {name:'Attrition Costs', value:turnCost+rampLoss, color:'#072A6C'},
+    {name:'Hidden Costs',    value:gamingL+legalR,    color:'#2BB5A0'},
+  ];
+
+  return {teamSize,avgOTE,basePct,revenue,errRate,adminH,adminR,turnover,compDriv,
+          replMult,ramp,gaming,legal,legalCost,varPay,totalVar,base,calcErrs,
+          adminOH,totalTurn,compTurn,replCost,turnCost,rampLoss,gamingL,legalR,
+          total,revPct,breakdown,pie};
+}
+
+// ── SVG DONUT ─────────────────────────────────────────────────────
+function donutSVG(pie, sz) {
+  const cx=sz/2,cy=sz/2,or=sz*.42,ir=sz*.27;
+  const tot=pie.reduce((s,d)=>s+d.value,0);
+  if(!tot) return `<svg width="${sz}" height="${sz}"><circle cx="${cx}" cy="${cy}" r="${or}" fill="#E5E7EB"/><circle cx="${cx}" cy="${cy}" r="${ir}" fill="white"/></svg>`;
+  let ang=-Math.PI/2,paths='';
+  pie.forEach(d=>{
+    const sw=(d.value/tot)*2*Math.PI,ea=ang+sw-0.025;
+    const c1=Math.cos(ang),s1=Math.sin(ang),c2=Math.cos(ea),s2=Math.sin(ea);
+    paths+=`<path d="M${f(cx+or*c1)},${f(cy+or*s1)} A${or},${or} 0 ${sw>Math.PI?1:0},1 ${f(cx+or*c2)},${f(cy+or*s2)} L${f(cx+ir*c2)},${f(cy+ir*s2)} A${ir},${ir} 0 ${sw>Math.PI?1:0},0 ${f(cx+ir*c1)},${f(cy+ir*s1)}Z" fill="${d.color}" stroke="white" stroke-width="2"/>`;
+    ang+=sw;
+  });
+  const fs=sz>150?13:10;
+  return `<svg width="${sz}" height="${sz}">${paths}<text x="${cx}" y="${cy-4}" text-anchor="middle" style="font-size:${fs}px;font-weight:800;fill:#1A1D21">${fmt(tot)}</text><text x="${cx}" y="${cy+11}" text-anchor="middle" style="font-size:9px;fill:#6B7280">Total</text></svg>`;
+}
+
+function legendHTML(pie,total) {
+  return pie.map(d=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 6px;border-radius:5px;margin-bottom:3px"><div style="display:flex;align-items:center;gap:7px"><div style="width:9px;height:9px;border-radius:2px;background:${d.color};flex-shrink:0"></div><span style="font-size:11px;color:#1A1D21">${d.name}</span></div><div><span style="font-size:11px;font-weight:700;color:${d.color}">${fmt(d.value)}</span><span style="font-size:10px;color:#9CA3AF;margin-left:4px">${total>0?(d.value/total*100).toFixed(0):0}%</span></div></div>`).join('');
+}
+
+function breakdownHTML(items,total) {
+  return items.map(item=>{
+    const w=total>0?(item.value/total*100):0;
+    const col=CAT_COLOR[item.name]||'#072A6C';
+    return `<div class="br-row"><div class="br-top"><span class="br-name">${item.name}</span><div class="br-right"><span class="br-amt" style="color:${col}">${fmtFull(item.value)}</span><span class="br-pct">${w.toFixed(0)}%</span></div></div><div class="br-track"><div class="br-fill" style="width:${w}%;background:${col}"></div></div></div>`;
+  }).join('');
+}
+
+// ── RENDER ────────────────────────────────────────────────────────
+function render() {
+  const r = calc();
+  const icmKey = document.querySelector('.icm-btn.sel')?.dataset.key||'spreadsheet';
+  const icmLabel = ICM[icmKey].label;
+
+  // Sidebar derived
+  setText('d-varPay',  fmt(r.varPay));
+  setText('d-totalVar',fmt(r.totalVar));
+  setText('d-revRep',  fmt(r.revenue/r.teamSize));
+  setText('d-compRatio',((r.avgOTE*r.teamSize)/r.revenue*100).toFixed(1)+'%');
+
+  // Stats
+  setText('s-total',    fmt(r.total));
+  setText('s-total-sub',r.revPct.toFixed(1)+'% of revenue');
+  setText('s-dep',      r.compTurn+' reps/yr');
+  setText('s-dep-sub',  r.totalTurn+' total turnover');
+  setText('s-cpd',      fmt(r.replCost));
+  setText('s-cpd-sub',  r.replMult.toFixed(1)+'x base salary');
+
+  // Charts
+  const bHTML = breakdownHTML(r.breakdown,r.total);
+  const dHTML = donutSVG(r.pie,190);
+  const lHTML = legendHTML(r.pie,r.total);
+  setHTML('prev-breakdown',bHTML); setHTML('prev-donut',dHTML); setHTML('prev-legend',lHTML);
+  setHTML('rep-breakdown', bHTML); setHTML('rep-donut', dHTML); setHTML('rep-legend', lHTML);
+  setText('rep-total',fmtFull(r.total));
+
+  // Print
+  setText('pr-total',    fmt(r.total));
+  setText('pr-total-sub','TOTAL ANNUAL IMPACT ('+r.revPct.toFixed(1)+'% of revenue)');
+  setText('pr-dep',      r.compTurn+' reps/yr');
+  setText('pr-dep-sub',  r.totalTurn+' total turnover');
+  setText('pr-cpd',      fmt(r.replCost));
+  setText('pr-cpd-sub',  r.replMult.toFixed(1)+'x base salary');
+  setText('pr-tool',     icmLabel);
+  setText('pr-err-rate', 'Error rate: '+(r.errRate*100).toFixed(1)+'%');
+  setText('pr-total-full',fmtFull(r.total));
+
+  setHTML('pr-inp-tbl',[
+    ['Sales Team Size',r.teamSize+' reps'],['Average OTE',fmtFull(r.avgOTE)],
+    ['Base / Variable Split',Math.round(r.basePct*100)+'/'+Math.round((1-r.basePct)*100)],
+    ['Annual Revenue',fmtFull(r.revenue)],['ICM Tool',icmLabel],
+  ].map(([k,v])=>`<tr><td style="color:#6B7280">${k}</td><td style="text-align:right;font-weight:700">${v}</td></tr>`).join(''));
+
+  setHTML('pr-assm-tbl',[
+    ['Commission Error Rate',(r.errRate*100).toFixed(1)+'%'],
+    ['Admin Hours / Month',r.adminH+' hrs'],['Admin Hourly Rate','$'+r.adminR+'/hr'],
+    ['Annual Turnover Rate',(r.turnover*100).toFixed(1)+'%'],
+    ['Comp-Driven Turnover %',(r.compDriv*100).toFixed(1)+'%'],
+    ['Replacement Multiplier',r.replMult.toFixed(1)+'x base'],
+    ['New Hire Ramp Time',r.ramp+' months'],
+    ['Gaming/Sandbagging Loss',(r.gaming*100).toFixed(1)+'%'],
+    ['Legal Issue Probability',(r.legal*100).toFixed(1)+'%'],
+    ['Avg Legal Cost',fmtFull(r.legalCost)],
+  ].map(([k,v])=>`<tr><td style="color:#6B7280;padding:2px 0">${k}</td><td style="text-align:right;font-weight:600">${v}</td></tr>`).join(''));
+
+  setHTML('pr-cost-rows',r.breakdown.map(item=>{
+    const w=r.total>0?(item.value/r.total*100):0;
+    const col=CAT_COLOR[item.name]||'#072A6C';
+    return `<div class="pr-crow"><div class="pr-ctop"><span class="pr-clbl">${item.name}</span><span class="pr-camt" style="color:${col}">${fmtFull(item.value)}</span></div><div class="pr-cbg"><div class="pr-cfg" style="width:${w.toFixed(1)}%;background:${col}"></div></div><div class="pr-cpct">${w.toFixed(0)}%</div></div>`;
+  }).join(''));
+
+  // Print donut
+  const prD=g('pr-donut');
+  if(prD){
+    const sz=160,pcx=80,pcy=80,por=66,pir=42,pt=r.pie.reduce((s,d)=>s+d.value,0);
+    let pang=-Math.PI/2,pp='';
+    r.pie.forEach(d=>{
+      const sw=(d.value/pt)*2*Math.PI,ea=pang+sw-0.02;
+      const c1=Math.cos(pang),s1=Math.sin(pang),c2=Math.cos(ea),s2=Math.sin(ea);
+      pp+=`<path d="M${f(pcx+por*c1)},${f(pcy+por*s1)} A${por},${por} 0 ${sw>Math.PI?1:0},1 ${f(pcx+por*c2)},${f(pcy+por*s2)} L${f(pcx+pir*c2)},${f(pcy+pir*s2)} A${pir},${pir} 0 ${sw>Math.PI?1:0},0 ${f(pcx+pir*c1)},${f(pcy+pir*s1)}Z" fill="${d.color}" stroke="white" stroke-width="1.5"/>`;
+      pang+=sw;
+    });
+    prD.innerHTML=pp+`<text x="${pcx}" y="${pcy-4}" text-anchor="middle" style="font-size:12px;font-weight:800;fill:#1A1D21">${fmt(r.pie.reduce((s,d)=>s+d.value,0))}</text><text x="${pcx}" y="${pcy+11}" text-anchor="middle" style="font-size:9px;fill:#6B7280">Total</text>`;
+  }
+  setHTML('pr-legend',r.pie.map(d=>`<div class="pr-di"><div class="pr-dot" style="background:${d.color}"></div><span style="flex:1">${d.name}</span><strong style="color:${d.color}">${fmt(d.value)}</strong><span style="color:#6B7280;margin-left:4px">(${r.total>0?(d.value/r.total*100).toFixed(0):0}%)</span></div>`).join(''));
+}
+
+// ── EVENTS ────────────────────────────────────────────────────────
+function bindSlider(id, dispId, fn) {
+  const el=g(id); if(!el) return;
+  el.addEventListener('input',()=>{ const dp=g(dispId); if(dp) dp.textContent=fn(parseFloat(el.value)); render(); });
+}
+function bindNum(id) { const el=g(id); if(el) el.addEventListener('input',render); }
+
+window.addEventListener('DOMContentLoaded',()=>{
+  bindSlider('f-avgOTE',    'd-avgOTE',    v=>'$'+Math.round(v).toLocaleString('en-US'));
+  bindSlider('f-basePct',   'd-basePct',   v=>Math.round(v)+' / '+(100-Math.round(v)));
+  bindSlider('f-errorRate', 'd-errorRate', v=>f(v)+'%');
+  bindSlider('f-turnover',  'd-turnover',  v=>f(v)+'%');
+  bindSlider('f-compDriven','d-compDriven',v=>f(v)+'%');
+  bindSlider('f-replMult',  'd-replMult',  v=>(v/10).toFixed(1)+'x base');
+  bindSlider('f-ramp',      'd-ramp',      v=>v+' months');
+  bindSlider('f-gaming',    'd-gaming',    v=>f(v)+'%');
+  bindSlider('f-legal',     'd-legal',     v=>f(v)+'%');
+
+  ['f-teamSize','f-revenue','f-adminHours','f-adminRate','f-legalCost'].forEach(bindNum);
+
+  document.querySelectorAll('.icm-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.icm-btn').forEach(b=>b.classList.remove('sel'));
+      btn.classList.add('sel');
+      const p=ICM[btn.dataset.key];
+      const setSldr=(id,val,did,fn)=>{ const e=g(id); if(e){e.value=val; const d=g(did); if(d&&fn) d.textContent=fn(val);}};
+      setSldr('f-errorRate', p.errorRate, 'd-errorRate', v=>f(v)+'%');
+      setSldr('f-compDriven',p.compDriven,'d-compDriven',v=>f(v)+'%');
+      setSldr('f-legal',     p.legalRisk, 'd-legal',     v=>f(v)+'%');
+      const ah=g('f-adminHours'); if(ah) ah.value=p.adminHours;
+      const ar=g('f-adminRate');  if(ar) ar.value=p.adminRate;
+      render();
+    });
+  });
+
+  g('email-form').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const emailEl=g('email-inp'),errEl=g('email-err'),btn=g('submit-btn');
+    const email=emailEl.value.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      emailEl.classList.add('err');
+      errEl.textContent='Please enter a valid work email address.';
+      errEl.style.display='block';
+      return;
+    }
+    emailEl.classList.remove('err'); errEl.style.display='none';
+    btn.disabled=true; btn.textContent='Sending your report...';
+
+    const r = calc();
+    const icmKey = document.querySelector('.icm-btn.sel')?.dataset.key||'spreadsheet';
+    const icmLabel = ICM[icmKey].label;
+    const total = r.total;
+    const bd = r.breakdown;
+    const findCat = name => bd.find(b=>b.name===name)?.value||0;
+    const gamingV   = findCat('Revenue Leakage (Gaming)');
+    const rampV     = findCat('Ramp Productivity Loss');
+    const turnV     = findCat('Turnover Replacement');
+    const calcErrV  = findCat('Calculation Errors');
+    const adminV    = findCat('Admin Overhead');
+    const legalV    = findCat('Legal & Dispute Risk');
+    const pct = (v,t) => t>0?(v/t*100).toFixed(0):0;
+
+    const payload = {
+      email,
+      // Headline figures
+      fmtTotal:   fmt(total),
+      revPct:     r.revPct.toFixed(1),
+      compTurn:   r.compTurn,
+      totalTurn:  r.totalTurn,
+      fmtReplCost:fmtFull(r.replCost),
+      replMult:   r.replMult.toFixed(1),
+      icmLabel,
+      errRatePct: (r.errRate*100).toFixed(1),
+      // Breakdown
+      fmtGamingL: fmtFull(gamingV),  pctGaming: pct(gamingV,total),
+      fmtRampLoss:fmtFull(rampV),    pctRamp:   pct(rampV,total),
+      fmtTurnCost:fmtFull(turnV),    pctTurn:   pct(turnV,total),
+      fmtCalcErrs:fmtFull(calcErrV), pctCalc:   pct(calcErrV,total),
+      fmtAdminOH: fmtFull(adminV),   pctAdmin:  pct(adminV,total),
+      fmtLegalR:  fmtFull(legalV),   pctLegal:  pct(legalV,total),
+      // Inputs summary
+      teamSize:   r.teamSize,
+      fmtOTE:     fmtFull(r.avgOTE),
+      baseSplit:  Math.round(r.basePct*100)+'/'+Math.round((1-r.basePct)*100),
+      fmtRevenue: fmtFull(r.revenue),
+    };
+
+    // 1. HubSpot lead capture
+    try {
+      await fetch(`https://api.hsforms.com/submissions/v3/integration/submit/${HS_PORTAL}/${HS_FORM}`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({fields:[{name:'email',value:email}],context:{pageUri:window.location.href,pageName:'Comp Plan Error Impact Calculator'}})
+      });
+    } catch(_){}
+
+    // 2. n8n webhook → automated email to lead
+    try {
+      if(N8N_WEBHOOK && !N8N_WEBHOOK.startsWith('YOUR_')) {
+        await fetch(N8N_WEBHOOK,{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(payload)
+        });
+      }
+    } catch(_){}
+
+    // 3. Unlock report
+    btn.disabled=false;
+    g('gate-section').style.display='none';
+    g('report-section').style.display='block';
+    g('report-section').scrollIntoView({behavior:'smooth',block:'start'});
+
+    // 4. Auto-trigger print dialog (save as PDF)
+    setTimeout(()=>{ window.print(); }, 800);
+  });
+
+  render();
+});
+</script>
+</body>
+</html>
